@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'D:/repo/mgear_dist/crank/crank/crankUI.ui'
 #
-# Created: Mon Jul 23 18:38:48 2018
+# Created: Tue Jul 24 15:54:43 2018
 #      by: pyside2-uic  running on PySide2 2.0.0~alpha0
 #
 # WARNING! All changes made in this file will be lost!
@@ -23,6 +23,14 @@ class Ui_Form(object):
         self.gridLayout_2.setContentsMargins(6, 6, 6, 6)
         self.gridLayout_2.setSpacing(4)
         self.gridLayout_2.setObjectName("gridLayout_2")
+        self.search_lineEdit = QtWidgets.QLineEdit(self.groupBox)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.search_lineEdit.sizePolicy().hasHeightForWidth())
+        self.search_lineEdit.setSizePolicy(sizePolicy)
+        self.search_lineEdit.setObjectName("search_lineEdit")
+        self.gridLayout_2.addWidget(self.search_lineEdit, 1, 0, 1, 1)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.createLayer_pushButton = QtWidgets.QPushButton(self.groupBox)
@@ -34,17 +42,11 @@ class Ui_Form(object):
         self.refresh_pushButton.setObjectName("refresh_pushButton")
         self.horizontalLayout.addWidget(self.refresh_pushButton)
         self.gridLayout_2.addLayout(self.horizontalLayout, 0, 0, 1, 1)
-        self.layers_listWidget = QtWidgets.QListWidget(self.groupBox)
-        self.layers_listWidget.setObjectName("layers_listWidget")
-        self.gridLayout_2.addWidget(self.layers_listWidget, 2, 0, 1, 1)
-        self.search_lineEdit = QtWidgets.QLineEdit(self.groupBox)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.search_lineEdit.sizePolicy().hasHeightForWidth())
-        self.search_lineEdit.setSizePolicy(sizePolicy)
-        self.search_lineEdit.setObjectName("search_lineEdit")
-        self.gridLayout_2.addWidget(self.search_lineEdit, 1, 0, 1, 1)
+        self.layers_listView = QtWidgets.QListView(self.groupBox)
+        self.layers_listView.setAlternatingRowColors(True)
+        self.layers_listView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.layers_listView.setObjectName("layers_listView")
+        self.gridLayout_2.addWidget(self.layers_listView, 2, 0, 1, 1)
         self.gridLayout_4.addWidget(self.groupBox, 0, 0, 1, 1)
         self.groupBox_2 = QtWidgets.QGroupBox(Form)
         self.groupBox_2.setObjectName("groupBox_2")

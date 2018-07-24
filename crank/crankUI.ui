@@ -32,6 +32,16 @@
       <property name="spacing">
        <number>4</number>
       </property>
+      <item row="1" column="0">
+       <widget class="QLineEdit" name="search_lineEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
@@ -63,15 +73,18 @@
        </layout>
       </item>
       <item row="2" column="0">
-       <widget class="QListWidget" name="layers_listWidget"/>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLineEdit" name="search_lineEdit">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
+       <widget class="QListView" name="layers_listView">
+        <property name="editTriggers">
+         <set>QAbstractItemView::NoEditTriggers</set>
+        </property>
+        <property name="showDropIndicator" stdset="0">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::ExtendedSelection</enum>
         </property>
        </widget>
       </item>
@@ -90,45 +103,51 @@
       <property name="spacing">
        <number>4</number>
       </property>
-      <item row="0" column="0">
+      <item row="2" column="0">
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
          <layout class="QGridLayout" name="gridLayout">
           <item row="1" column="2">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Post Hold</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
            <widget class="QSpinBox" name="postHold_spinBox"/>
           </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>Pre Hold</string>
-            </property>
-           </widget>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="preHold_spinBox"/>
           </item>
-          <item row="1" column="0">
-           <widget class="QSpinBox" name="easeIn_spinBox">
-            <property name="minimum">
-             <number>1</number>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Ease In</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
+          <item row="2" column="3">
            <widget class="QSpinBox" name="easeOut_spinBox">
             <property name="minimum">
-             <number>1</number>
+             <number>0</number>
             </property>
             <property name="value">
              <number>1</number>
             </property>
            </widget>
           </item>
-          <item row="0" column="3">
+          <item row="1" column="0">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Ease In</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QSpinBox" name="easeIn_spinBox">
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
            <widget class="QLabel" name="label_2">
             <property name="text">
              <string>Ease Out</string>
@@ -136,12 +155,9 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QSpinBox" name="preHold_spinBox"/>
-          </item>
-          <item row="0" column="2">
-           <widget class="QLabel" name="label_4">
+           <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Post Hold</string>
+             <string>Pre Hold</string>
             </property>
            </widget>
           </item>
@@ -196,6 +212,16 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="keyframe_checkBox">
+        <property name="text">
+         <string>Auto Keyframe</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
