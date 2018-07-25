@@ -35,6 +35,8 @@ TODO:
     sculpt frame attributes:
         -frame number
 
+    call back to exit edit mode if frame change
+
 '''
 
 ####################################
@@ -53,7 +55,6 @@ def create_layer(oSel):
     oSel = [x for x in oSel
             if x.getShapes()
             and x.getShapes()[0].type() == 'mesh']
-    print oSel
 
     if oSel:
         result = pm.promptDialog(title='Crank Layer Name',
@@ -89,7 +90,6 @@ def create_blendshape_node(bsName, oSel):
                                           bsName,
                                           "blendShape_crank"]),
                            foc=False)[0]
-        print bs
         bs_list.append(bs)
 
     return bs_list
@@ -127,8 +127,6 @@ def create_layer_node(name, affectedElements):
     # connections
     for x in affectedElements:
         idx = attribute.get_next_available_index(layer_node.layer_objects)
-        print idx
-        print x
         pm.connectAttr(x.message, layer_node.layer_objects[idx])
 
     return layer_node
@@ -140,14 +138,19 @@ def list_crank_layer_nodes():
 
 
 def get_layer_affected_elements(layer_node):
-    return
+    if not isinstance(layer_node, list):
+        layer_node = [layer_node]
+    members = []
+    for lyr in layer_node:
+        members = members + lyr.layer_objects.inputs()
+    return set(members)
 
 
 ####################################
 # sculpt frame
 ####################################
 
-def add_frame_sculpt(layer_node, solo=False):
+def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1], solo=False):
 
     objs = layer_node.layer_objects.inputs()
     bs_node = layer_node.layer_blendshape_node.inputs()
@@ -173,16 +176,46 @@ def add_frame_sculpt(layer_node, solo=False):
                                         maxValue=1)
 
     # keyframe in range the master channel
-    pm.setKeyframe(master_chn,
-                   t=[cframe],
-                   v=1,
-                   inTangentType="linear",
-                   outTangentType="linear")
-    pm.setKeyframe(master_chn,
-                   t=[cframe - 1, cframe + 1],
-                   v=0,
-                   inTangentType="linear",
-                   outTangentType="linear")
+    if anim:
+        # current frame
+        pm.setKeyframe(master_chn,
+                       t=[cframe],
+                       v=1,
+                       inTangentType="linear",
+                       outTangentType="linear")
+
+        # pre and post hold
+        pre_hold = keyf[1]
+        if pre_hold:
+            pm.setKeyframe(master_chn,
+                           t=[cframe - pre_hold],
+                           v=1,
+                           inTangentType="linear",
+                           outTangentType="linear")
+
+        post_hold = keyf[2]
+        if post_hold:
+            pm.setKeyframe(master_chn,
+                           t=[cframe + post_hold],
+                           v=1,
+                           inTangentType="linear",
+                           outTangentType="linear")
+
+        # ease in and out
+        if keyf[0]:
+            ei = pre_hold + keyf[0]
+            pm.setKeyframe(master_chn,
+                           t=[cframe - ei],
+                           v=0,
+                           inTangentType="linear",
+                           outTangentType="linear")
+        if keyf[3]:
+            eo = post_hold + keyf[3]
+            pm.setKeyframe(master_chn,
+                           t=[cframe + eo],
+                           v=0,
+                           inTangentType="linear",
+                           outTangentType="linear")
 
     for obj, bsn in zip(objs, bs_node):
         dup = pm.duplicate(obj)[0]
@@ -203,16 +236,62 @@ def add_frame_sculpt(layer_node, solo=False):
         # connect target to master channel
         pm.connectAttr(master_chn, bsn.attr(bst_name))
 
-        #select affected elements
-        pm.select(objs)
-
 
 def delete_sculpt_frame():
+
+    # delete blendshape targets
+
+    # delete master channel
+
     return
 
 
 def edit_sculpt_frame():
-    return
+    attrs = attribute.getSelectedChannels()
+    # Only one at the time!
+    # we only set editable the first selected channel/frame_.
+    if attrs:
+        for x in pm.selected():
+            if x.hasAttr(attrs[0]):
+                _set_channel_edit_target(x.attr(attrs[0]), edit=True)
+        return True
+
+    else:
+        pm.displayWarning("Not channels selected for edit!")
+        return False
+
+
+def edit_layer_off(layer_node):
+    # set all targets of specific layer to edit off
+    uda = layer_node.listAttr(ud=True, k=True)
+    for chn in uda:
+        if not chn.name().endswith("envelope"):
+            _set_channel_edit_target(chn, False)
+
+
+def edit_all_off():
+    # set all crank layer edit off
+    for lyr in list_crank_layer_nodes():
+        edit_layer_off(pm.PyNode(lyr))
+
+
+def _set_channel_edit_target(chn, edit=True):
+    # set the blendshape target of a channel editable or not editable
+    attrs = chn.listConnections(d=True, s=False, p=True)
+    for a in attrs:
+        if edit:
+            pm.sculptTarget(a.node(), e=True, t=a.index())
+            # get the time from the channel name
+            pm.currentTime(int(chn.name().split(".")[-1].split("_")[1]))
+            pm.inViewMessage(amg="{}: Edit mode is ON".format(chn.name()),
+                             pos='midCenterBot',
+                             fade=True)
+        else:
+            a.node().inputTarget[a.index()].sculptTargetIndex.set(-1)
+            pm.mel.eval("updateBlendShapeEditHUD;")
+            pm.inViewMessage(amg="{}: Edit mode is OFF".format(chn.name()),
+                             pos='midCenterBot',
+                             fade=True)
 
 
 ####################################
@@ -280,7 +359,6 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def _getSelectedListIndexes(self):
         layers = []
         for x in self.crankUIWInst.layers_listView.selectedIndexes():
-            print x
             try:
                 layers.append(pm.PyNode(x.data()))
 
@@ -289,15 +367,65 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 return False
         return layers
 
+    def select_layer_node(self):
+        layers = self._getSelectedListIndexes()
+        pm.select(layers)
+
     def create_layer(self):
-        print "create layer now"
         create_layer(pm.selected())
         self._refreshList()
 
     def add_frame_sculpt(self):
         # layer_node = pm.PyNode("ddd_crankLayer")
+        anim = self.crankUIWInst.keyframe_checkBox.isChecked()
+        ei = self.crankUIWInst.easeIn_spinBox.value()
+        eo = self.crankUIWInst.easeOut_spinBox.value()
+        pre = self.crankUIWInst.preHold_spinBox.value()
+        pos = self.crankUIWInst.postHold_spinBox.value()
         for layer_node in self._getSelectedListIndexes():
-            add_frame_sculpt(layer_node)
+            add_frame_sculpt(layer_node, anim=anim, keyf=[ei, pre, pos, eo])
+
+        self.select_members()
+
+    def edit_frame_sculpt(self):
+        if edit_sculpt_frame():
+            self.select_members()
+
+    def edit_layer_off(self):
+        for layer_node in self._getSelectedListIndexes():
+            edit_layer_off(layer_node)
+
+    def edit_all_off(self):
+        edit_all_off()
+
+    ###########################
+    # "right click context menu for layers"
+    ###########################
+
+    def _layer_menu(self, QPos):
+
+        lyr_widget = self.crankUIWInst.layers_listView
+        currentSelection = lyr_widget.selectedIndexes()
+        if currentSelection is None:
+            return
+        self.lyr_menu = QtWidgets.QMenu()
+        parentPosition = lyr_widget.mapToGlobal(QtCore.QPoint(0, 0))
+        menu_item_01 = self.lyr_menu.addAction("Select Members")
+        self.lyr_menu.addSeparator()
+        menu_item_02 = self.lyr_menu.addAction("Selected Layer Edit OFF")
+        menu_item_03 = self.lyr_menu.addAction("All Layers Edit OFF")
+        self.lyr_menu.addSeparator()
+
+        menu_item_01.triggered.connect(self.select_members)
+        menu_item_02.triggered.connect(self.edit_layer_off)
+        menu_item_03.triggered.connect(self.edit_all_off)
+
+        self.lyr_menu.move(parentPosition + QPos)
+        self.lyr_menu.show()
+
+    def select_members(self):
+        layers = self._getSelectedListIndexes()
+        pm.select(get_layer_affected_elements(layers))
 
     ###########################
     # create connections SIGNALS
@@ -311,6 +439,17 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.create_layer)
         self.crankUIWInst.addFrame_pushButton.clicked.connect(
             self.add_frame_sculpt)
+        self.crankUIWInst.editFrame_pushButton.clicked.connect(
+            self.edit_frame_sculpt)
+
+        selModel = self.crankUIWInst.layers_listView.selectionModel()
+        selModel.selectionChanged.connect(self.select_layer_node)
+
+        # connect menu
+        self.crankUIWInst.layers_listView.setContextMenuPolicy(
+            QtCore.Qt.CustomContextMenu)
+        self.crankUIWInst.layers_listView.customContextMenuRequested.connect(
+            self._layer_menu)
 
     #############
     # SLOTS
