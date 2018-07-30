@@ -4,7 +4,7 @@ from mgear.crank import crankTool
 
 
 def install():
-    """Install Simple Rig submenu
+    """Install Crank submenu
     """
     pm.setParent(mgear.menu_id, menu=True)
     pm.menuItem(divider=True)

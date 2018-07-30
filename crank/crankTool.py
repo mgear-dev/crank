@@ -35,7 +35,7 @@ TODO:
     sculpt frame attributes:
         -frame number
 
-    call back to exit edit mode if frame change
+    callback to exit edit mode if frame change
 
 '''
 
@@ -51,7 +51,14 @@ CRANK_TAG = "_isCrankLayer"
 
 
 def create_layer(oSel):
+    """Create new crank layer for shot sculpting
 
+    Args:
+        oSel (Mesh list): Objects to be included in the layer
+
+    Returns:
+        dagNode: cranklayer node with all the layer data
+    """
     oSel = [x for x in oSel
             if x.getShapes()
             and x.getShapes()[0].type() == 'mesh']
@@ -83,6 +90,15 @@ def create_layer(oSel):
 
 
 def create_blendshape_node(bsName, oSel):
+    """Create the blendshape node for each object in the layer
+
+    Args:
+        bsName (str): The name prefix for the blendshape node
+        oSel (Mesh list): The object to apply the blendshape node
+
+    Returns:
+        PyNode: The blendshape node list
+    """
     bs_list = []
     for obj in oSel:
         bs = pm.blendShape(obj,
@@ -96,7 +112,16 @@ def create_blendshape_node(bsName, oSel):
 
 
 def create_layer_node(name, affectedElements):
-        # create a transform node that contain the layer information and
+    """Create a transform node that contain the layer information.
+
+    Args:
+        name (str): layer name
+        affectedElements (dagNode list): Elements affected by the layer.
+                Only Mesh type is supported
+
+    Returns:
+        dagNode: layer node
+    """
 
     fullName = name + "_crankLayer"
 
@@ -133,11 +158,25 @@ def create_layer_node(name, affectedElements):
 
 
 def list_crank_layer_nodes():
+    """Search the scene for crank layer nodes
+
+    Returns:
+        dagNode list: List of all the Crank layer nodes
+    """
     return [sm for sm in cmds.ls(type="transform") if cmds.attributeQuery(
         CRANK_TAG, node=sm, exists=True)]
 
 
 def get_layer_affected_elements(layer_node):
+    """From a given Crank layer nodes will return the affeted elements
+    of the layers
+
+    Args:
+        layer_node (dagNode or list): The Crank Layer nodes
+
+    Returns:
+        set: The elements in the layer nodes
+    """
     if not isinstance(layer_node, list):
         layer_node = [layer_node]
     members = []
@@ -150,8 +189,17 @@ def get_layer_affected_elements(layer_node):
 # sculpt frame
 ####################################
 
-def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1], solo=False):
+def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1]):
+    """Add a sculpt frame to each selected layer
 
+    Args:
+        layer_node (dagNode list):  ist of Crank layer node to add the
+            sculpt frame
+        anim (bool, optional): if True, will keyframe the sculpt frame in the
+        specified range.
+        keyf (list, optional):  Keyframe range configuration. EaseIn, pre hold,
+        post hold and ease out
+    """
     objs = layer_node.layer_objects.inputs()
     bs_node = layer_node.layer_blendshape_node.inputs()
 
@@ -237,19 +285,17 @@ def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1], solo=False):
         pm.connectAttr(master_chn, bsn.attr(bst_name))
 
 
-def delete_sculpt_frame():
-
-    # delete blendshape targets
-
-    # delete master channel
-
-    return
-
-
 def edit_sculpt_frame():
+    """Edit the sculpt frame selected in the channel box.
+    Multiple layers can be edited at the same time.
+    But Only one frame at the time!
+    We only set editable the first selected channel/frame.
+
+    Returns:
+        bool: If the edit is set successful
+    """
     attrs = attribute.getSelectedChannels()
-    # Only one at the time!
-    # we only set editable the first selected channel/frame_.
+
     if attrs:
         for x in pm.selected():
             if x.hasAttr(attrs[0]):
@@ -262,7 +308,11 @@ def edit_sculpt_frame():
 
 
 def edit_layer_off(layer_node):
-    # set all targets of specific layer to edit off
+    """set all targets of specific layer to edit off
+
+    Args:
+        layer_node (dagNode): the layer node
+    """
     uda = layer_node.listAttr(ud=True, k=True)
     for chn in uda:
         if not chn.name().endswith("envelope"):
@@ -270,13 +320,19 @@ def edit_layer_off(layer_node):
 
 
 def edit_all_off():
-    # set all crank layer edit off
+    """Set all crank layer edit off
+    """
     for lyr in list_crank_layer_nodes():
         edit_layer_off(pm.PyNode(lyr))
 
 
 def _set_channel_edit_target(chn, edit=True):
-    # set the blendshape target of a channel editable or not editable
+    """Set the blendshape target of a channel editable or not editable
+
+    Args:
+        chn (PyNode): Attribute channel to edit
+        edit (bool, optional): Set ON or OFF the channel edit status
+    """
     attrs = chn.listConnections(d=True, s=False, p=True)
     for a in attrs:
         if edit:
@@ -310,6 +366,10 @@ class crankUIW(QtWidgets.QDialog, crankUI.Ui_Form):
 
 class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
+    """Crank shot sculpt main window
+
+    """
+
     valueChanged = QtCore.Signal(int)
     wi_to_destroy = []
 
@@ -329,14 +389,16 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
     def setup_crankWindow(self):
-
+        """Setup the window
+        """
         self.setObjectName(self.toolName)
         self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowTitle("Crank: Shot Sculpting")
         self.resize(266, 445)
 
     def create_layout(self):
-
+        """Create the layout
+        """
         self.crank_layout = QtWidgets.QVBoxLayout()
         self.crank_layout.addWidget(self.crankUIWInst)
         self.crank_layout.setContentsMargins(3, 3, 3, 3)
@@ -344,6 +406,11 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.setLayout(self.crank_layout)
 
     def setSourceModel(self, model):
+        """Set the source model for the listview
+
+        Args:
+            model (Qt model): QtCore.QSortFilterProxyModel
+        """
         self.__proxyModel.setSourceModel(model)
 
     ###########################
@@ -351,12 +418,19 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     ###########################
 
     def _refreshList(self):
+        """Refresh listview content
+        """
         model = QtGui.QStandardItemModel(self)
         for c_node in list_crank_layer_nodes():
             model.appendRow(QtGui.QStandardItem(c_node))
         self.setSourceModel(model)
 
     def _getSelectedListIndexes(self):
+        """Get the selected layer index from the list view
+
+        Returns:
+            dagNode list: The selected layers list
+        """
         layers = []
         for x in self.crankUIWInst.layers_listView.selectedIndexes():
             try:
@@ -368,15 +442,20 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         return layers
 
     def select_layer_node(self):
+        """Select the layer node from the list index
+        """
         layers = self._getSelectedListIndexes()
         pm.select(layers)
 
     def create_layer(self):
+        """Create a new layer and update the window list
+        """
         create_layer(pm.selected())
         self._refreshList()
 
     def add_frame_sculpt(self):
-        # layer_node = pm.PyNode("ddd_crankLayer")
+        """Add a new fram sculpt
+        """
         anim = self.crankUIWInst.keyframe_checkBox.isChecked()
         ei = self.crankUIWInst.easeIn_spinBox.value()
         eo = self.crankUIWInst.easeOut_spinBox.value()
@@ -388,14 +467,20 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.select_members()
 
     def edit_frame_sculpt(self):
+        """Edit fram sculpt
+        """
         if edit_sculpt_frame():
             self.select_members()
 
     def edit_layer_off(self):
+        """Turn off the layer edit status
+        """
         for layer_node in self._getSelectedListIndexes():
             edit_layer_off(layer_node)
 
     def edit_all_off(self):
+        """Turn off all the layers edit status
+        """
         edit_all_off()
 
     ###########################
@@ -403,7 +488,14 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     ###########################
 
     def _layer_menu(self, QPos):
+        """Create the layers rightclick menu
 
+        Args:
+            QPos (QPos): Position
+
+        Returns:
+            None: None
+        """
         lyr_widget = self.crankUIWInst.layers_listView
         currentSelection = lyr_widget.selectedIndexes()
         if currentSelection is None:
@@ -424,6 +516,8 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.lyr_menu.show()
 
     def select_members(self):
+        """Select the members of a given layer
+        """
         layers = self._getSelectedListIndexes()
         pm.select(get_layer_affected_elements(layers))
 
@@ -431,6 +525,8 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     # create connections SIGNALS
     ###########################
     def create_connections(self):
+        """Create connections
+        """
         self.crankUIWInst.search_lineEdit.textChanged.connect(
             self.filterChanged)
         self.crankUIWInst.refresh_pushButton.clicked.connect(
@@ -455,6 +551,9 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     # SLOTS
     #############
     def filterChanged(self, filter):
+        """Filter out the elements in the list view
+
+        """
         regExp = QtCore.QRegExp(filter,
                                 QtCore.Qt.CaseSensitive,
                                 QtCore.QRegExp.Wildcard
@@ -463,6 +562,11 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
 def openUI(*args):
+    """Open the UI window
+
+    Args:
+        *args: Dummy
+    """
     pyqt.showDialog(crankTool)
 
 ####################################
