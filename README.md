@@ -1,2 +1,2 @@
-# crank
-Shot Sculptin Tool
+# Crank
+Shot Sculpting Tool

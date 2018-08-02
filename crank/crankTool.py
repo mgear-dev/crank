@@ -17,9 +17,10 @@ TODO:
             -Select members
             -Toggle ON/OFF
             -Solo
-            -Random Color (for each object in the layer)
-            -Ghost Create
-            -Ghost Delete
+            -----------
+            -Random Color
+            -Clear Random Color
+            -----------
             -Delete Selected Layer
             -----------
             -Add selected to layer
@@ -30,10 +31,6 @@ TODO:
             -----------
             -Turn All ON
             -Turn All OFF
-
-
-    sculpt frame attributes:
-        -frame number
 
     callback to exit edit mode if frame change
 
