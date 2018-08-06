@@ -2,10 +2,11 @@ import pymel.core as pm
 import maya.cmds as cmds
 from pymel import versions
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+from maya.api import OpenMaya as om
 
 from mgear.vendor.Qt import QtCore, QtWidgets, QtGui
 from mgear.core import transform, node, attribute, applyop, pyqt, utils, curve
-from mgear.core import string
+from mgear.core import string, callbackManager
 
 from . import crankUI
 
@@ -316,7 +317,7 @@ def edit_layer_off(layer_node):
             _set_channel_edit_target(chn, False)
 
 
-def edit_all_off():
+def _edit_all_off():
     """Set all crank layer edit off
     """
     for lyr in list_crank_layer_nodes():
@@ -373,6 +374,9 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def __init__(self, parent=None):
         self.toolName = "Crank"
         super(crankTool, self).__init__(parent)
+
+        self.cbm = None
+
         self.crankUIWInst = crankUIW()
 
         self.__proxyModel = QtCore.QSortFilterProxyModel(self)
@@ -383,7 +387,17 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.create_connections()
         self._refreshList()
 
+        self.time_change_cb()
+
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+
+    def closeEvent(self, evnt):
+        """oon close, kill all callbacks
+
+        Args:
+            evnt (Qt.QEvent): Close event called
+        """
+        self.cbm.removeAllManagedCB()
 
     def setup_crankWindow(self):
         """Setup the window
@@ -475,10 +489,22 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         for layer_node in self._getSelectedListIndexes():
             edit_layer_off(layer_node)
 
-    def edit_all_off(self):
+    def edit_all_off(self, *args):
         """Turn off all the layers edit status
         """
-        edit_all_off()
+
+        if om.MConditionMessage.getConditionState("playingBack"):
+            return
+        else:
+            _edit_all_off()
+
+    ###########################
+    # Callback
+    ###########################
+    def time_change_cb(self):
+        self.cbm = callbackManager.CallbackManager()
+        self.cbm.debug = False
+        self.cbm.timeChangedCB("crankTimeChange", self.edit_all_off)
 
     ###########################
     # "right click context menu for layers"
