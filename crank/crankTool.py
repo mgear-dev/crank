@@ -243,6 +243,18 @@ def make_random_color_rsl(geo_list, lyr_name, seed=0):
         pm.undoInfo(closeChunk=True)
 
 
+def get_all_rsl():
+    """get all the render setup layers names
+
+    Yields:
+        str: the names of all the rsl layers
+    """
+    rs = renderSetup.instance()
+    render_layers = rs.getRenderLayers()
+    for x in render_layers:
+        yield x.name()
+
+
 def clear_all_rsl():
     """Clear all renderSetupLayers
     """
@@ -615,7 +627,7 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def time_change_cb(self):
         self.cbm = callbackManager.CallbackManager()
         self.cbm.debug = False
-        self.cbm.timeChangedCB("crankTimeChange", self.edit_all_off)
+        self.cbm.userTimeChangedCB("crankTimeChange", self.edit_all_off)
 
     ###########################
     # "right click context menu for layers"
@@ -641,10 +653,16 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         menu_item_02 = self.lyr_menu.addAction("Selected Layer Edit OFF")
         menu_item_03 = self.lyr_menu.addAction("All Layers Edit OFF")
         self.lyr_menu.addSeparator()
+        menu_item_04 = self.lyr_menu.addAction("Random Color")
+        menu_item_05 = self.lyr_menu.addAction("Clear Selected Random Color")
+        menu_item_06 = self.lyr_menu.addAction("Clear All Random Color")
 
         menu_item_01.triggered.connect(self.select_members)
         menu_item_02.triggered.connect(self.edit_layer_off)
         menu_item_03.triggered.connect(self.edit_all_off)
+        menu_item_04.triggered.connect(self.random_color)
+        menu_item_05.triggered.connect(self.clear_random_color)
+        menu_item_06.triggered.connect(self.clear_all_random_color)
 
         self.lyr_menu.move(parentPosition + QPos)
         self.lyr_menu.show()
@@ -654,6 +672,29 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         """
         layers = self._getSelectedListIndexes()
         pm.select(get_layer_affected_elements(layers))
+
+    def random_color(self):
+        """Create a random color render layer for each layer
+        """
+        layers = self._getSelectedListIndexes()
+        for lyr in layers:
+            geo_list = get_layer_affected_elements(lyr)
+            make_random_color_rsl(geo_list, lyr.name())
+
+    def clear_random_color(self):
+        """Clear random color layers of selected layers
+        """
+        layers = self._getSelectedListIndexes()
+        for lyr in layers:
+            clear_rsl_by_name(lyr.name())
+
+    def clear_all_random_color(self):
+        """Clear random color layers of all layers
+        """
+        layers = get_all_rsl()
+        for lyr in layers:
+            if lyr.startswith("crank_"):
+                clear_rsl_by_name(lyr)
 
     ###########################
     # create connections SIGNALS
