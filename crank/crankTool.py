@@ -1,7 +1,13 @@
+import random
+
 import pymel.core as pm
+import maya.mel as mel
 import maya.cmds as cmds
 from pymel import versions
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+import maya.app.renderSetup.model.renderSetup as renderSetup
+import maya.app.renderSetup.model.renderLayer as renderLayer
+import maya.app.renderSetup.model.typeIDs as typeIDs
 from maya.api import OpenMaya as om
 
 from mgear.vendor.Qt import QtCore, QtWidgets, QtGui
@@ -19,8 +25,9 @@ TODO:
             -Toggle ON/OFF
             -Solo
             -----------
-            -Random Color
+            -Add Random Color
             -Clear Random Color
+            -Clear ALL Random Color
             -----------
             -Delete Selected Layer
             -----------
@@ -181,6 +188,110 @@ def get_layer_affected_elements(layer_node):
     for lyr in layer_node:
         members = members + lyr.layer_objects.inputs()
     return set(members)
+
+
+####################################
+# random color layer visualization
+####################################
+
+def make_random_color_mtl(mtl_type="phong", seedStr="0", seedOffset=1):
+    """Make randomColor material
+
+    Args:
+        mtl_type (str, optional): Material type i.e: "lambert", "phong"
+        seedStr (str, optional): random seed
+        seedOffset (int, optional): random seed offset
+
+    Returns:
+        pyNode: material node
+    """
+    randomColor = [0.0, 0.0, 0.0]
+    for i in range(0, 3):
+        random.seed(seedStr + str(seedOffset + i))
+        randomColor[i] = random.random()
+
+    mtl = pm.shadingNode(mtl_type, asShader=True)
+    pm.setAttr(mtl.color, randomColor)
+    return mtl
+
+
+def make_random_color_rsl(geo_list, lyr_name, seed=0):
+    """Make randomColor renderSetuplayer
+
+    Args:
+        geo_list (pyNode list): list of geometries affected by the layer
+        lyr_name (str): Layer name
+        seed (int, optional): Random Seed
+    """
+    try:
+        pm.undoInfo(openChunk=True)
+
+        rs = renderSetup.instance()
+        rs.clearAll()
+        mel.eval('MLdeleteUnused;')
+
+        rl = rs.createRenderLayer("crank_{}randomColor".format(lyr_name))
+        for geo in geo_list:
+            mtl = make_random_color_mtl(seedStr=str(geo), seedOffset=seed)
+            clct = rl.createCollection("clct")
+            clct.getSelector().setPattern(geo)
+            shOv = clct.createOverride('shOv', typeIDs.shaderOverride)
+            shOv.setShader(mtl)
+
+        # rs.switchToLayer(rl)
+    finally:
+        pm.undoInfo(closeChunk=True)
+
+
+def clear_all_rsl():
+    """Clear all renderSetupLayers
+    """
+    try:
+        pm.undoInfo(openChunk=True)
+        rs = renderSetup.instance()
+        rs.clearAll()
+        mel.eval('MLdeleteUnused;')
+    finally:
+        pm.undoInfo(closeChunk=True)
+
+
+def clear_rsl_by_name(lyr_name):
+    """Clear/Delete layer by name
+
+    Args:
+        lyr_name (str): Name of the layer to delete
+    """
+    try:
+        pm.undoInfo(openChunk=True)
+        rs = renderSetup.instance()
+        layer_list = rs.getRenderLayers()
+        for layer in layer_list:
+            if not layer.name() == lyr_name:
+                continue
+            if layer.isVisible():
+                rs.switchToLayer(rs.getDefaultRenderLayer())
+            rs.detachRenderLayer(layer)
+            renderLayer.delete(layer)
+        mel.eval('MLdeleteUnused;')
+    finally:
+        pm.undoInfo(closeChunk=True)
+
+
+def setEnabled_random_color_rsl(lyr_name, enabled=True):
+    """switch randomColorRsl
+
+    Args:
+        lyr_name (str): Layer Name
+        enabled (bool): If True will enable the layer
+    """
+    rs = renderSetup.instance()
+    if enabled:
+        for rl in rs.getRenderLayers():
+            if rl.name() == lyr_name:
+                rs.switchToLayer(rl)
+                break
+    else:
+        rs.switchToLayer(rs.getDefaultRenderLayer())
 
 
 ####################################
