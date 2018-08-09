@@ -21,13 +21,8 @@ TODO:
 
     layer lister:
         -Right click menu
-            -Select members
             -Toggle ON/OFF
             -Solo
-            -----------
-            -Add Random Color
-            -Clear Random Color
-            -Clear ALL Random Color
             -----------
             -Delete Selected Layer
             -----------
@@ -40,7 +35,6 @@ TODO:
             -Turn All ON
             -Turn All OFF
 
-    callback to exit edit mode if frame change
 
 '''
 
@@ -49,6 +43,7 @@ TODO:
 ####################################
 
 CRANK_TAG = "_isCrankLayer"
+CRANK_RENDER_LAYER_NAME = "crankLayer_randomColor"
 
 ####################################
 # Layer Node
@@ -142,6 +137,9 @@ def create_layer_node(name, affectedElements):
     # add attrs
     attribute.addAttribute(
         layer_node, CRANK_TAG, "bool", False, keyable=False)
+    # this attribute will help to track the edit state to speed up the callback
+    attribute.addAttribute(
+        layer_node, "edit_state", "bool", False, keyable=False)
     # affected objects
     layer_node.addAttr("layer_objects", at='message', m=True)
     layer_node.addAttr("layer_blendshape_node", at='message', m=True)
@@ -230,7 +228,7 @@ def make_random_color_rsl(geo_list, lyr_name, seed=0):
         rs.clearAll()
         mel.eval('MLdeleteUnused;')
 
-        rl = rs.createRenderLayer("crank_{}randomColor".format(lyr_name))
+        rl = rs.createRenderLayer(CRANK_RENDER_LAYER_NAME)
         for geo in geo_list:
             mtl = make_random_color_mtl(seedStr=str(geo), seedOffset=seed)
             clct = rl.createCollection("clct")
@@ -238,7 +236,7 @@ def make_random_color_rsl(geo_list, lyr_name, seed=0):
             shOv = clct.createOverride('shOv', typeIDs.shaderOverride)
             shOv.setShader(mtl)
 
-        # rs.switchToLayer(rl)
+        rs.switchToLayer(rl)
     finally:
         pm.undoInfo(closeChunk=True)
 
@@ -314,7 +312,7 @@ def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1]):
     """Add a sculpt frame to each selected layer
 
     Args:
-        layer_node (dagNode list):  ist of Crank layer node to add the
+        layer_node (dagNode list):  list of Crank layer node to add the
             sculpt frame
         anim (bool, optional): if True, will keyframe the sculpt frame in the
         specified range.
@@ -343,6 +341,9 @@ def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1]):
                                         value=1,
                                         minValue=0,
                                         maxValue=1)
+
+    # set edit state
+    layer_node.edit_state.set(True)
 
     # keyframe in range the master channel
     if anim:
@@ -388,7 +389,7 @@ def add_frame_sculpt(layer_node, anim=False, keyf=[1, 0, 0, 1]):
 
     for obj, bsn in zip(objs, bs_node):
         dup = pm.duplicate(obj)[0]
-        bst_name = "_".join([obj.name(), frame_name])
+        bst_name = "_".join([obj.stripNamespace(), frame_name])
         pm.rename(dup, bst_name)
         indx = bsn.weight.getNumElements()
         pm.blendShape(bsn,
@@ -418,7 +419,11 @@ def edit_sculpt_frame():
     attrs = attribute.getSelectedChannels()
 
     if attrs:
+        # get the time from the channel name
+        pm.currentTime(int(attrs[0].split(".")[-1].split("_")[1]))
         for x in pm.selected():
+            # set edit state
+            x.edit_state.set(True)
             if x.hasAttr(attrs[0]):
                 _set_channel_edit_target(x.attr(attrs[0]), edit=True)
         return True
@@ -434,10 +439,14 @@ def edit_layer_off(layer_node):
     Args:
         layer_node (dagNode): the layer node
     """
-    uda = layer_node.listAttr(ud=True, k=True)
-    for chn in uda:
-        if not chn.name().endswith("envelope"):
-            _set_channel_edit_target(chn, False)
+    if layer_node.edit_state.get():
+        uda = layer_node.listAttr(ud=True, k=True)
+        for chn in uda:
+            if not chn.name().endswith("envelope"):
+                _set_channel_edit_target(chn, False)
+
+        # set edit state
+        layer_node.edit_state.set(False)
 
 
 def _edit_all_off():
@@ -458,8 +467,6 @@ def _set_channel_edit_target(chn, edit=True):
     for a in attrs:
         if edit:
             pm.sculptTarget(a.node(), e=True, t=a.index())
-            # get the time from the channel name
-            pm.currentTime(int(chn.name().split(".")[-1].split("_")[1]))
             pm.inViewMessage(amg="{}: Edit mode is ON".format(chn.name()),
                              pos='midCenterBot',
                              fade=True)
@@ -520,6 +527,8 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         Args:
             evnt (Qt.QEvent): Close event called
         """
+        self.clear_random_color()
+        self.edit_all_off()
         self.cbm.removeAllManagedCB()
 
     def setup_crankWindow(self):
@@ -627,7 +636,8 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def time_change_cb(self):
         self.cbm = callbackManager.CallbackManager()
         self.cbm.debug = False
-        self.cbm.userTimeChangedCB("crankTimeChange", self.edit_all_off)
+        self.cbm.userTimeChangedCB("crankTimeChange_editOFF",
+                                   self.edit_all_off)
 
     ###########################
     # "right click context menu for layers"
@@ -653,16 +663,15 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         menu_item_02 = self.lyr_menu.addAction("Selected Layer Edit OFF")
         menu_item_03 = self.lyr_menu.addAction("All Layers Edit OFF")
         self.lyr_menu.addSeparator()
-        menu_item_04 = self.lyr_menu.addAction("Random Color")
-        menu_item_05 = self.lyr_menu.addAction("Clear Selected Random Color")
-        menu_item_06 = self.lyr_menu.addAction("Clear All Random Color")
+        menu_item_04 = self.lyr_menu.addAction("Random Color + Isolate")
+        menu_item_05 = self.lyr_menu.addAction("Clear Random Color")
+        self.lyr_menu.addSeparator()
 
         menu_item_01.triggered.connect(self.select_members)
         menu_item_02.triggered.connect(self.edit_layer_off)
         menu_item_03.triggered.connect(self.edit_all_off)
         menu_item_04.triggered.connect(self.random_color)
         menu_item_05.triggered.connect(self.clear_random_color)
-        menu_item_06.triggered.connect(self.clear_all_random_color)
 
         self.lyr_menu.move(parentPosition + QPos)
         self.lyr_menu.show()
@@ -677,24 +686,13 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         """Create a random color render layer for each layer
         """
         layers = self._getSelectedListIndexes()
-        for lyr in layers:
-            geo_list = get_layer_affected_elements(lyr)
-            make_random_color_rsl(geo_list, lyr.name())
+        geo_list = get_layer_affected_elements(layers)
+        make_random_color_rsl(geo_list, CRANK_RENDER_LAYER_NAME)
 
     def clear_random_color(self):
-        """Clear random color layers of selected layers
-        """
-        layers = self._getSelectedListIndexes()
-        for lyr in layers:
-            clear_rsl_by_name(lyr.name())
-
-    def clear_all_random_color(self):
         """Clear random color layers of all layers
         """
-        layers = get_all_rsl()
-        for lyr in layers:
-            if lyr.startswith("crank_"):
-                clear_rsl_by_name(lyr)
+        clear_rsl_by_name(CRANK_RENDER_LAYER_NAME)
 
     ###########################
     # create connections SIGNALS
