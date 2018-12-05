@@ -740,7 +740,7 @@ def openUI(*args):
     Args:
         *args: Dummy
     """
-    pyqt.showDialog(crankTool)
+    pyqt.showDialog(crankTool, dockable=True)
 
 ####################################
 
