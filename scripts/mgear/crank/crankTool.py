@@ -3,7 +3,6 @@ import random
 import pymel.core as pm
 import maya.mel as mel
 import maya.cmds as cmds
-from pymel import versions
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 import maya.app.renderSetup.model.renderSetup as renderSetup
 import maya.app.renderSetup.model.renderLayer as renderLayer
@@ -11,7 +10,7 @@ import maya.app.renderSetup.model.typeIDs as typeIDs
 from maya.api import OpenMaya as om
 
 from mgear.vendor.Qt import QtCore, QtWidgets, QtGui
-from mgear.core import transform, node, attribute, applyop, pyqt, utils, curve
+from mgear.core import attribute, pyqt
 from mgear.core import string, callbackManager
 
 from . import crankUI
@@ -490,6 +489,12 @@ class crankUIW(QtWidgets.QDialog, crankUI.Ui_Form):
     def __init__(self, parent=None):
         super(crankUIW, self).__init__(parent)
         self.setupUi(self)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        self.installEventFilter(self)
+
+    def keyPressEvent(self, event):
+        if not event.key() == QtCore.Qt.Key_Escape:
+            super(crankUIW, self).keyPressEvent(event)
 
 
 class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
@@ -520,6 +525,11 @@ class crankTool(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.time_change_cb()
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        self.installEventFilter(self)
+
+    def keyPressEvent(self, event):
+        if not event.key() == QtCore.Qt.Key_Escape:
+            super(crankTool, self).keyPressEvent(event)
 
     def closeEvent(self, evnt):
         """oon close, kill all callbacks
