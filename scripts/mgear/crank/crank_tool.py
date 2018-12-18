@@ -13,7 +13,7 @@ from mgear.vendor.Qt import QtCore, QtWidgets, QtGui
 from mgear.core import attribute, pyqt
 from mgear.core import string, callbackManager
 
-from . import crankUI
+from . import crank_ui
 
 '''
 TODO:
@@ -481,7 +481,7 @@ def _set_channel_edit_target(chn, edit=True):
 # Crank Tool UI
 ####################################
 
-class crankUIW(QtWidgets.QDialog, crankUI.Ui_Form):
+class crankUIW(QtWidgets.QDialog, crank_ui.Ui_Form):
 
     """UI Widget
     """
