@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:/repo/mgear_dist/crank/crank/crankUI.ui'
+# Form implementation generated from reading ui file 'D:/repo/mgear_dist/crank/crank/crank_ui.ui'
 #
 # Created: Wed Jul 25 18:25:23 2018
 #      by: pyside2-uic  running on PySide2 2.0.0~alpha0
